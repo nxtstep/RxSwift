@@ -32,8 +32,9 @@ public final class Variable<Element> {
     /// Even if the newly set value is same as the old value, observers are still notified for change.
     public var value: E {
         get {
-            _lock.lock(); defer { _lock.unlock() }
-            return _value
+            return _lock.calculateLocked {
+                return _value
+            }
         }
         set(newValue) {
             #if DEBUG
@@ -45,11 +46,10 @@ public final class Variable<Element> {
                     _ = AtomicDecrement(&_numberOfConcurrentCalls)
                 }
             #endif
-            _lock.lock()
-            _value = newValue
-            _lock.unlock()
-
-            _subject.on(.next(newValue))
+            _lock.performLocked {
+                _value = newValue
+                _subject.on(.next(_value))
+            }
         }
     }
     
